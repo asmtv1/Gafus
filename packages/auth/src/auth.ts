@@ -47,6 +47,10 @@ export const authOptions: NextAuthOptions = {
       async authorize(
         credentials: Record<"username" | "password", string> | undefined,
       ): Promise<AuthUser> {
+        console.log("🔑 Authorize attempt:", { 
+          username: credentials?.username,
+          hasCredentials: !!credentials
+        });
         if (!credentials?.username || !credentials?.password) {
           throw new Error("Введите имя пользователя и пароль");
         }
@@ -59,6 +63,7 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.password);
         if (!valid) throw new Error("Неверный пароль");
 
+        console.log("✅ User authorized:", { id: user.id, username: user.username, role: user.role });
         return {
           id: user.id,
           username: user.username,
@@ -75,9 +80,14 @@ export const authOptions: NextAuthOptions = {
     secret: process.env.NEXTAUTH_SECRET,
     maxAge: 30 * 24 * 60 * 60,
   },
-  // Доверяем заголовкам X-Forwarded-* для работы через прокси
   callbacks: {
     async jwt({ token, user }) {
+      console.log("🔐 JWT callback:", { 
+        hasToken: !!token, 
+        hasUser: !!user, 
+        userId: user?.id,
+        tokenKeys: Object.keys(token || {})
+      });
       if (user) {
         token.id = user.id;
         token.username = user.username;
@@ -86,6 +96,12 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      console.log("📋 Session callback:", { 
+        hasSession: !!session, 
+        hasToken: !!token, 
+        userId: token?.id,
+        tokenKeys: Object.keys(token || {})
+      });
       if (session.user) {
         session.user.id = token.id;
         session.user.username = token.username;
@@ -104,7 +120,6 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
-  debug: true,
   cookies: {
     sessionToken: {
       name: "next-auth.session-token",
@@ -112,9 +127,10 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        domain: cookieDomain,
         secure: isProd,
+        domain: cookieDomain,
       },
     },
   },
+  debug: true,
 };
